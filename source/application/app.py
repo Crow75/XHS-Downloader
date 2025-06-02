@@ -546,26 +546,51 @@ class XHS:
 
         @self.server.post(
             "/xhs/",
-            response_model=ExtractData,
+            response_model=list[ExtractData],
         )
         async def handle(extract: ExtractParams):
             url = await self.extract_links(extract.url, None)
             if not url:
                 msg = _("提取小红书作品链接失败")
-                data = None
+                return [ExtractData(message=_("提取小红书作品链接失败"), params=extract, data=None)]
             else:
-                if data := await self.__deal_extract(
-                    url[0],
-                    extract.download,
-                    extract.index,
-                    None,
-                    None,
-                    not extract.skip,
-                    extract.cookie,
-                    extract.proxy,
-                ):
-                    msg = _("获取小红书作品数据成功")
-                else:
-                    msg = _("获取小红书作品数据失败")
-                    data = None
-            return ExtractData(message=msg, params=extract, data=data)
+                result = []
+                for i in url:
+                    try:
+                        data = await self.__deal_extract(
+                                i,
+                                extract.download,
+                                extract.index,
+                                None,
+                                None,
+                                not extract.skip,
+                                extract.cookie,
+                                extract.proxy
+                        )
+                        if data:
+                            msg = _("获取小红书作品数据成功")
+                        else:
+                            msg = f"获取小红书作品数据失败: {i}"
+                            data = None
+                    except Exception as e:
+                        data = None
+                        msg = f"获取小红书作品数据异常: {i} - {e}"
+
+                    result.append(ExtractData(message=msg, params=extract, data=data))
+            return result
+
+            #     if data := await self.__deal_extract(
+            #         url[0],
+            #         extract.download,
+            #         extract.index,
+            #         None,
+            #         None,
+            #         not extract.skip,
+            #         extract.cookie,
+            #         extract.proxy,
+            #     ):
+            #         msg = _("获取小红书作品数据成功")
+            #     else:
+            #         msg = _("获取小红书作品数据失败")
+            #         data = None
+            # return ExtractData(message=msg, params=extract, data=data)
